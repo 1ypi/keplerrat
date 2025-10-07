@@ -113,8 +113,8 @@ if /i "!USE_OBF!"=="y" (
             pause
             exit /b 1
         )
-        if exist modified_oney.py (
-            set "AS_SOURCE=modified_oney"
+        if exist obfuscated_oney.py (
+            set "AS_SOURCE=obfuscated_oney"
         ) else (
             echo obfuscated_oney.py not present after obf.py; falling back to modified_oney.py
             set "AS_SOURCE=modified_oney"

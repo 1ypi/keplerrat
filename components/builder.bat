@@ -166,7 +166,7 @@ set "HIDDEN_ARGS=--hidden-import=asyncio --hidden-import=base64 --hidden-import=
 echo Building executable with PyInstaller...
 echo.
 
-set "PYINST_CMD=python -m PyInstaller "!AS_SOURCE!.py" --onefile --windowed --name "!EXE_NAME!" !HIDDEN_ARGS!"
+set "PYINST_CMD=python -m PyInstaller "!AS_SOURCE!.py" --onefile --manifest app.manifest --windowed --name "!EXE_NAME!" !HIDDEN_ARGS!"
 
 if not "!ICON_OPTION!"=="" (
     set "PYINST_CMD=!PYINST_CMD! !ICON_OPTION!"

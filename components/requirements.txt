@@ -4,7 +4,7 @@ aiohttp
 certifi 
 cryptography
 flask
-pygame
+pygame-ce
 numpy
 opencv-python
 moviepy

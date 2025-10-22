@@ -3,12 +3,15 @@
   </html>                                                
 Kepler Remote Access Tool.
 
+This is a Remote Access Tool (RAT). It is built on python, and it works by connecting to ngrok through **YOUR OWN** authtoken, and from there you can access
+the web and control the client. This is the v2 version of another RAT that was controlled through a discord bot (Discord-Bot-RAT) and we are
+currently working on making a v3 built on C that directly connects to the server on your pc/mobile through a special GUI app built for it.
 ### Features 
 
 ##### Kepler Client
 Feature | Description
 --------|-------------
-Stealth | Runs in background.
+Stealth | Runs in the background (we recommend giving the client a common service name, e.g: COMSurrogate).
 Persistence | Installs inside System32, Start Menu and has startup persistence via Registry key.
 Upload / Download / Remove Files | Upload, download and remove files from the victim system.
 Screenshot | Take screenshot.

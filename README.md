@@ -1,5 +1,5 @@
 <html>
-    <img source="https://github.com/1ypi/private/blob/master/images/logo.png" height="90px" widgh = "90px">
+    <img source="https://github.com/1ypi/private/blob/main/images/logo.png" height="90px" widgh = "90px">
 </html>
 Kepler Remote Access Tool.
 

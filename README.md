@@ -57,7 +57,8 @@ victim pc.
 <html>
     <img src="./images/preview.png">
 </html>
-#### Developers
+
+### Developers
 This project was built by 1ypi and iznard aka. "vectxr.".
 
 You can contact us on Discord: @1ypi, @iznard.

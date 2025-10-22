@@ -160,13 +160,13 @@ if exist sqlite_path.tmp (
     echo Found _sqlite3 at: !SQLITE_PYD!
 )
 
-set "HIDDEN_ARGS=--hidden-import=asyncio --hidden-import=base64 --hidden-import=ctypes --hidden-import=time --hidden-import=glob --hidden-import=io --hidden-import=json --hidden-import=logging --hidden-import=os --hidden-import=pathlib --hidden-import=platform --hidden-import=re --hidden-import=shutil --hidden-import=socket --hidden-import=sqlite3 --hidden-import=pygame --hidden-import=ssl --hidden-import=subprocess --hidden-import=sys --hidden-import=tempfile --hidden-import=threading --hidden-import=urllib.request --hidden-import=webbrowser --hidden-import=winreg --hidden-import=zipfile --hidden-import=datetime --hidden-import=urllib3 --hidden-import=aiohttp --hidden-import=certifi --hidden-import=cv2 --hidden-import=keyboard --hidden-import=numpy --hidden-import=pyautogui --hidden-import=pyperclip --hidden-import=requests --hidden-import=moviepy --hidden-import=cryptography --hidden-import=cryptography.hazmat.primitives.ciphers.aead --hidden-import=flask --hidden-import=PIL --hidden-import=werkzeug.serving --hidden-import=pycaw.pycaw --hidden-import=comtypes --hidden-import=pythoncom --hidden-import=win32api --hidden-import=win32con --hidden-import=win32gui"
+set "HIDDEN_ARGS=--hidden-import=pygame --hidden-import=cv2 --hidden-import=numpy --hidden-import=PIL --hidden-import=PIL.Image --hidden-import=PIL.ImageGrab --hidden-import=flask --hidden-import=werkzeug --hidden-import=werkzeug.serving --hidden-import=aiohttp --hidden-import=certifi --hidden-import=keyboard --hidden-import=pyautogui --hidden-import=pyperclip --hidden-import=requests --hidden-import=urllib3 --hidden-import=moviepy --hidden-import=moviepy.video.io.VideoFileClip --hidden-import=cryptography --hidden-import=cryptography.hazmat.primitives.ciphers.aead --hidden-import=pycaw --hidden-import=pycaw.pycaw --hidden-import=comtypes --hidden-import=pythoncom --hidden-import=win32com --hidden-import=win32com.client --hidden-import=pywintypes --hidden-import=sqlite3 --hidden-import=win32gui"
 
 
 echo Building executable with PyInstaller...
 echo.
 
-set "PYINST_CMD=python -m PyInstaller "!AS_SOURCE!.py" --onefile --windowed --name "!EXE_NAME!" !HIDDEN_ARGS!"
+set "PYINST_CMD=python -m PyInstaller "!AS_SOURCE!.py" --version-file=version-info.txt --onefile --windowed --name "!EXE_NAME!" !HIDDEN_ARGS!"
 
 if not "!ICON_OPTION!"=="" (
     set "PYINST_CMD=!PYINST_CMD! !ICON_OPTION!"

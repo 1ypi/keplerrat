@@ -53,6 +53,10 @@ Authtoken, the name of the app, whether you want to put a custom icon or not, th
 5. Transfer the .exe file to the victim system, the one you want to control, open the .exe, and accept for firewall permissions.
 6. Lastly, in your ngrok dashboard, in the left tab, go to Endpoints, and there should be a URL there, that you can open, and you will have access to the
 victim pc.
+### Preview
+<html>
+    <img src="./images/preview.png">
+</html>
 #### Developers
 This project was built by 1ypi and iznard aka. "vectxr.".
 

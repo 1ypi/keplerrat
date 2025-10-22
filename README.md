@@ -1,5 +1,5 @@
 <html>
-  <img src="./images/logo.png" height="90px" widgh = "90px">
+  <img src="./images/logo.png">
   </html>                                                
 Kepler Remote Access Tool.
 

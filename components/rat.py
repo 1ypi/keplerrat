@@ -1500,7 +1500,7 @@ HTML_INTERFACE = """
                         <h3>🛡️ Security</h3>
                         <button class="btn" onclick="executeCommand('avbypass')">🛡️ AV Bypass</button>
                         <button class="btn" onclick="executeCommand('persist')">🔗 Add Persistence</button>
-                        <button class="btn" onclick="executeCommand('su')">⬆️ Request Admin</button>
+                        <button class="btn" onclick="executeCommand('su')">⬆️ Bypass Admin</button>
                         <button class="btn" onclick="executeCommand('discord')">📱 Discord Tokens</button>
                     </div>
 

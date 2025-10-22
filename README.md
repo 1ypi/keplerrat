@@ -44,9 +44,10 @@ Manage System Audio | Allows you to mute, unmute, set and get volume from used a
 
 #### Developers
 This project was built by 1ypi and iznard aka. "vectxr.".
+
 You can contact us on Discord: @1ypi, @iznard.
 
 #### LICENSE
-[VIEW LICENSE](https://github.com/1ypi/private/blob/master/LICENSE) 
+[VIEW LICENSE](https://github.com/1ypi/private/blob/main/LICENSE) 
 
 The Developers are not responsible for any misuse of Damage caused by the program. This is created only for EDUCATIONAL PURPOSES.

@@ -44,7 +44,15 @@ Manage System Audio | Allows you to mute, unmute, set and get volume from used a
 > cd private
 > ./builder.bat
 ```
-
+### Usage
+1. First, you must make your ngrok token. To do this, go to [ngrok](https://ngrok.com/), click Get Started For Free, make your account then
+2. On the tab to the left, hit "Your Authtoken", and in the top-middle, there is a long line of text. Hit copy, and save it somewhere for the next step.
+3. Use the build tutorial above this section to open the builder.bat, you must have python installed and in the PATH variables. It will ask you for your
+Authtoken, the name of the app, whether you want to put a custom icon or not, the .ico file path, and lastly whether you want to obfuscate or not (We recommend you do).
+4. On the system you want to control, deactivate the AV if possible, to minimize the possibility of the RAT being deleted/put on quarantine.
+5. Transfer the .exe file to the victim system, the one you want to control, open the .exe, and accept for firewall permissions.
+6. Lastly, in your ngrok dashboard, in the left tab, go to Endpoints, and there should be a URL there, that you can open, and you will have access to the
+victim pc.
 #### Developers
 This project was built by 1ypi and iznard aka. "vectxr.".
 

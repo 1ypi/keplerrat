@@ -65,6 +65,6 @@ You can contact us on Discord: @1ypi, @iznard.
 ### CREDIT
 Credit to xaitax for the Chrome App Bound Encryption Decryption. 
 #### LICENSE
-[VIEW LICENSE](https://github.com/1ypi/private/blob/main/LICENSE) 
+[VIEW LICENSE](https://github.com/1ypi/keplerrat/blob/main/LICENSE) 
 
 The Developers are not responsible for any misuse of Damage caused by the program. This is created only for EDUCATIONAL PURPOSES.

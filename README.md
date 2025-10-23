@@ -62,7 +62,8 @@ victim pc.
 This project was built by 1ypi and iznard aka. "vectxr.".
 
 You can contact us on Discord: @1ypi, @iznard.
-
+### CREDIT
+Credit to xaitax for the Chrome App Bound Encryption Decryption. 
 #### LICENSE
 [VIEW LICENSE](https://github.com/1ypi/private/blob/main/LICENSE) 
 

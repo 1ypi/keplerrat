@@ -40,8 +40,8 @@ Manage System Audio | Allows you to mute, unmute, set and get volume from used a
 
 ### Client Executable Build Tutorial (via bat file)
 ```bash
-> git clone https://github.com/1ypi/private
-> cd private
+> git clone https://github.com/1ypi/keplerrat
+> cd keplerrat
 > ./builder.bat
 ```
 ### Usage

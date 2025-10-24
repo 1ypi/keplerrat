@@ -14,7 +14,7 @@ Feature | Description
 --------|-------------
 Stealth | Runs in the background (we recommend giving the client a common service name, e.g: COMSurrogate).
 Persistence | Installs inside System32, Start Menu and has startup persistence via Registry key.
-Upload / Download / Remove Files | Upload, download and remove files from the victim system.
+Upload / Download / Remove Files | Upload, download and remove files from the client system.
 Screenshot | Take screenshot.
 Webcam Photo | Capture default camera photo.
 Keylogger | Log Keystrokes and save to file.

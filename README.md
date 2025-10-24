@@ -3,11 +3,11 @@
   </html>                                                
 Kepler Remote Access Tool.
 <kbd>
-<img  src="">
 </kbd><br><br>
 This is a Remote Access Tool (RAT). It is built on python, and it works by connecting to ngrok through **YOUR OWN** authtoken, and from there you can access
 the web and control the client. It uses an obfuscation script to run it through a 3-layer encryption to further hide the program and, if found, makes it very difficult to find the code's true purpose. This is the v2 version of another RAT that was controlled through a discord bot (Discord-Bot-RAT) and we are
 currently working on making a v3 built on C that directly connects to the server on your pc/mobile through a special GUI app built for it.
+
 ### Features 
 
 ##### Kepler Client

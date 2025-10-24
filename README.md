@@ -17,7 +17,7 @@ Persistence | Installs inside System32, Start Menu and has startup persistence v
 Upload / Download / Remove Files | Upload, download and remove files from the victim system.
 Screenshot | Take screenshot.
 Webcam Photo | Capture default camera photo.
-Keylogger | Log Keystrokes and save to file via Reflective DLL.
+Keylogger | Log Keystrokes and save to file.
 Check Admin | Get Kepler Client process admin status.
 Power off | Power off the Client system.
 Reboot | Reboot the client system.

